@@ -12,6 +12,10 @@ import (
 //
 // Holds a.mu for the entire operation: state validation, state update,
 // event recording, and lastEvent update are atomic.
+//
+// Returns an error if the transition is invalid or if the state change
+// event cannot be emitted (OBSERVABLE invariant — state changes must be
+// recorded on the graph).
 func (a *Agent) transitionTo(target egagent.OperationalState) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -30,9 +34,9 @@ func (a *Agent) transitionTo(target egagent.OperationalState) error {
 		Current:  next.String(),
 	})
 	if err != nil {
-		// State was already updated in memory — log but don't fail.
-		// The event emission failure doesn't invalidate the transition.
-		return nil
+		// Roll back the state — an unrecorded transition violates OBSERVABLE.
+		a.state = prev
+		return fmt.Errorf("transition %s → %s: record event: %w", prev, next, err)
 	}
 
 	a.lastEvent = ev.ID()

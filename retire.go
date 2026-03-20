@@ -12,22 +12,16 @@ import (
 // Follows the Retire composition: Introspect → Communicate (farewell) →
 // Memory (archive) → Lifespan (end).
 //
+// All events are emitted via graph.Record() for bus visibility.
 // Resolves any mid-operation state (Escalating, Refusing) back to Idle
 // before beginning the retirement sequence.
 //
 // Transitions: current state → [Idle →] Retiring → Retired.
 func (a *Agent) Retire(ctx context.Context, reason string) error {
 	// Resolve mid-operation states that can't transition directly to Retiring.
-	// Escalating → Idle, Refusing → Idle are valid FSM transitions.
 	state := a.State()
 	switch state {
-	case egagent.StateEscalating, egagent.StateRefusing:
-		if err := a.transitionTo(egagent.StateIdle); err != nil {
-			return fmt.Errorf("retire: resolve %s: %w", state, err)
-		}
-	case egagent.StateWaiting:
-		// Waiting → Processing → Idle → Retiring would be cleanest,
-		// but Waiting can also go to Idle directly.
+	case egagent.StateEscalating, egagent.StateRefusing, egagent.StateWaiting:
 		if err := a.transitionTo(egagent.StateIdle); err != nil {
 			return fmt.Errorf("retire: resolve %s: %w", state, err)
 		}
@@ -39,18 +33,13 @@ func (a *Agent) Retire(ctx context.Context, reason string) error {
 		return fmt.Errorf("retire: %w", err)
 	}
 
-	// Introspect: final self-observation.
-	introEv, _, err := a.runtime.Introspect(ctx, "Final introspection before retirement: "+reason)
-	if err == nil {
-		a.mu.Lock()
-		a.lastEvent = introEv.ID()
-		a.mu.Unlock()
-	}
+	// Introspect: final self-observation (via graph.Record, not runtime.Introspect).
+	_, _ = a.Introspect(ctx, "Final introspection before retirement: "+reason)
 
 	// Communicate: farewell on the "lifecycle" channel.
 	_, _ = a.recordAndTrack(event.EventTypeAgentCommunicated.Value(), event.AgentCommunicatedContent{
 		AgentID:   a.runtime.ID(),
-		Recipient: a.runtime.ID(), // farewell to all — self-addressed
+		Recipient: a.runtime.ID(),
 		Channel:   "lifecycle",
 	})
 

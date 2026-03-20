@@ -12,7 +12,7 @@ import (
 
 // Reason sends a prompt to the agent's LLM and returns the response.
 // Drives the state machine: Idle → Processing → Idle.
-// Emits agent.evaluated with the result.
+// Emits agent.evaluated via graph.Record() (bus-visible, hash-chain safe).
 func (a *Agent) Reason(ctx context.Context, prompt string) (string, error) {
 	if err := a.transitionTo(egagent.StateProcessing); err != nil {
 		return "", fmt.Errorf("reason: %w", err)
@@ -26,11 +26,10 @@ func (a *Agent) Reason(ctx context.Context, prompt string) (string, error) {
 
 	content := resp.Content()
 
-	// Emit evaluated event (atomic record + causality update).
 	_, _ = a.recordAndTrack(event.EventTypeAgentEvaluated.Value(), event.AgentEvaluatedContent{
 		AgentID:    a.runtime.ID(),
 		Subject:    "reason",
-		Confidence: types.MustScore(1.0),
+		Confidence: resp.Confidence(),
 		Result:     truncate(content, 500),
 	})
 
@@ -43,7 +42,7 @@ func (a *Agent) Reason(ctx context.Context, prompt string) (string, error) {
 
 // Operate runs the agent's LLM with filesystem/tool access (agentic mode).
 // Drives the state machine: Idle → Processing → Idle.
-// Emits agent.acted with the result summary.
+// Emits agent.acted via graph.Record() (bus-visible, hash-chain safe).
 func (a *Agent) Operate(ctx context.Context, workDir, instruction string) (decision.OperateResult, error) {
 	op, ok := a.runtime.Provider().(decision.IOperator)
 	if !ok {
@@ -63,7 +62,6 @@ func (a *Agent) Operate(ctx context.Context, workDir, instruction string) (decis
 		return decision.OperateResult{}, fmt.Errorf("operate: %w", err)
 	}
 
-	// Emit acted event (atomic record + causality update).
 	_, _ = a.recordAndTrack(event.EventTypeAgentActed.Value(), event.AgentActedContent{
 		AgentID: a.runtime.ID(),
 		Action:  "operate",
@@ -77,10 +75,10 @@ func (a *Agent) Operate(ctx context.Context, workDir, instruction string) (decis
 	return result, nil
 }
 
-// Observe queries the graph for recent events relevant to this agent.
-// Returns a slice of recent events for context building.
+// Observe queries the graph for events in this agent's conversation thread.
+// Returns recent events relevant to this agent's context.
 func (a *Agent) Observe(ctx context.Context, limit int) ([]event.Event, error) {
-	page, err := a.graph.Store().Recent(limit, types.None[types.Cursor]())
+	page, err := a.graph.Store().ByConversation(a.convID, limit, types.None[types.Cursor]())
 	if err != nil {
 		return nil, fmt.Errorf("observe: %w", err)
 	}
@@ -94,26 +92,36 @@ func (a *Agent) Memory(limit int) ([]event.Event, error) {
 
 // Evaluate produces a judgment about a subject.
 // Drives the state machine: Idle → Processing → Idle.
+// Calls the LLM directly and emits agent.evaluated via graph.Record().
 func (a *Agent) Evaluate(ctx context.Context, subject, prompt string) (string, error) {
 	if err := a.transitionTo(egagent.StateProcessing); err != nil {
 		return "", fmt.Errorf("evaluate: %w", err)
 	}
 
-	ev, result, err := a.runtime.Evaluate(ctx, subject, prompt)
+	// Call provider directly (not runtime.Evaluate) to avoid bypassing graph.
+	memory, _ := a.runtime.Memory(10)
+	resp, err := a.runtime.Provider().Reason(ctx, prompt, memory)
 	if err != nil {
 		_ = a.transitionTo(egagent.StateIdle)
 		return "", fmt.Errorf("evaluate: %w", err)
 	}
 
-	a.mu.Lock()
-	a.lastEvent = ev.ID()
-	a.mu.Unlock()
-
-	if err := a.transitionTo(egagent.StateIdle); err != nil {
-		return result, fmt.Errorf("evaluate: transition back: %w", err)
+	_, err = a.recordAndTrack(event.EventTypeAgentEvaluated.Value(), event.AgentEvaluatedContent{
+		AgentID:    a.runtime.ID(),
+		Subject:    subject,
+		Confidence: resp.Confidence(),
+		Result:     resp.Content(),
+	})
+	if err != nil {
+		_ = a.transitionTo(egagent.StateIdle)
+		return "", fmt.Errorf("evaluate: record: %w", err)
 	}
 
-	return result, nil
+	if err := a.transitionTo(egagent.StateIdle); err != nil {
+		return resp.Content(), fmt.Errorf("evaluate: transition back: %w", err)
+	}
+
+	return resp.Content(), nil
 }
 
 // Communicate sends a message to another agent through the graph.
@@ -132,25 +140,24 @@ func (a *Agent) Communicate(ctx context.Context, targetID types.ActorID, channel
 }
 
 // Learn records a lesson from experience.
+// Emits agent.learned via graph.Record() (bus-visible, hash-chain safe).
 func (a *Agent) Learn(ctx context.Context, lesson, source string) error {
-	ev, err := a.runtime.Learn(ctx, lesson, source)
+	_, err := a.recordAndTrack(event.EventTypeAgentLearned.Value(), event.AgentLearnedContent{
+		AgentID: a.runtime.ID(),
+		Lesson:  lesson,
+		Source:  source,
+	})
 	if err != nil {
 		return fmt.Errorf("learn: %w", err)
 	}
-
-	a.mu.Lock()
-	a.lastEvent = ev.ID()
-	a.mu.Unlock()
-
 	return nil
 }
 
 // Escalate passes a problem upward in the hierarchy.
 // Drives the state machine: Idle → Processing → Escalating → Idle.
-// Always escalates to the human operator — role hierarchy is the
-// application layer's concern.
-func (a *Agent) Escalate(ctx context.Context, reason string) error {
-	// Must be Processing before Escalating (FSM constraint).
+// The target is the actor to escalate to (typically the human operator).
+// Emits agent.escalated via graph.Record() (bus-visible, hash-chain safe).
+func (a *Agent) Escalate(ctx context.Context, target types.ActorID, reason string) error {
 	if err := a.transitionTo(egagent.StateProcessing); err != nil {
 		return fmt.Errorf("escalate: %w", err)
 	}
@@ -159,25 +166,23 @@ func (a *Agent) Escalate(ctx context.Context, reason string) error {
 		return fmt.Errorf("escalate: %w", err)
 	}
 
-	targetID := types.MustActorID("human")
-
-	ev, err := a.runtime.Escalate(ctx, targetID, reason)
+	_, err := a.recordAndTrack(event.EventTypeAgentEscalated.Value(), event.AgentEscalatedContent{
+		AgentID:   a.runtime.ID(),
+		Authority: target,
+		Reason:    reason,
+	})
 	if err != nil {
 		_ = a.transitionTo(egagent.StateIdle)
 		return fmt.Errorf("escalate: %w", err)
 	}
-
-	a.mu.Lock()
-	a.lastEvent = ev.ID()
-	a.mu.Unlock()
 
 	return a.transitionTo(egagent.StateIdle)
 }
 
 // Refuse declines to perform an action (soul-protected refusal).
 // Drives the state machine: Idle → Processing → Refusing → Idle.
+// Emits agent.refused via graph.Record() (bus-visible, hash-chain safe).
 func (a *Agent) Refuse(ctx context.Context, action, reason string) error {
-	// Must be Processing before Refusing (FSM constraint).
 	if err := a.transitionTo(egagent.StateProcessing); err != nil {
 		return fmt.Errorf("refuse: %w", err)
 	}
@@ -186,17 +191,72 @@ func (a *Agent) Refuse(ctx context.Context, action, reason string) error {
 		return fmt.Errorf("refuse: %w", err)
 	}
 
-	ev, err := a.runtime.Refuse(ctx, action, reason)
+	_, err := a.recordAndTrack(event.EventTypeAgentRefused.Value(), event.AgentRefusedContent{
+		AgentID: a.runtime.ID(),
+		Action:  action,
+		Reason:  reason,
+	})
 	if err != nil {
 		_ = a.transitionTo(egagent.StateIdle)
 		return fmt.Errorf("refuse: %w", err)
 	}
 
-	a.mu.Lock()
-	a.lastEvent = ev.ID()
-	a.mu.Unlock()
-
 	return a.transitionTo(egagent.StateIdle)
+}
+
+// Introspect performs self-observation via LLM reasoning.
+// Returns the observation text. Emits agent.introspected via graph.Record().
+func (a *Agent) Introspect(ctx context.Context, prompt string) (string, error) {
+	memory, _ := a.runtime.Memory(20)
+	resp, err := a.runtime.Provider().Reason(ctx, prompt, memory)
+	if err != nil {
+		return "", fmt.Errorf("introspect: %w", err)
+	}
+
+	_, _ = a.recordAndTrack(event.EventTypeAgentIntrospected.Value(), event.AgentIntrospectedContent{
+		AgentID:     a.runtime.ID(),
+		Observation: resp.Content(),
+	})
+
+	return resp.Content(), nil
+}
+
+// Act records an action annotation event on the graph.
+// Used to mark significant actions (e.g. "write_code", "integrate") for observability.
+// Emits agent.acted via graph.Record() (bus-visible, hash-chain safe).
+func (a *Agent) Act(ctx context.Context, action, target string) error {
+	_, err := a.recordAndTrack(event.EventTypeAgentActed.Value(), event.AgentActedContent{
+		AgentID: a.runtime.ID(),
+		Action:  action,
+		Target:  target,
+	})
+	if err != nil {
+		return fmt.Errorf("act: %w", err)
+	}
+	return nil
+}
+
+// Research reads a URL and extracts information via the LLM.
+// Returns the evaluation text. Emits agent.evaluated via graph.Record().
+func (a *Agent) Research(ctx context.Context, url, extractionPrompt string) (string, error) {
+	fullPrompt := fmt.Sprintf("Read the following URL and %s\n\nURL: %s", extractionPrompt, url)
+	memory, _ := a.runtime.Memory(5)
+	resp, err := a.runtime.Provider().Reason(ctx, fullPrompt, memory)
+	if err != nil {
+		return "", fmt.Errorf("research: %w", err)
+	}
+
+	_, err = a.recordAndTrack(event.EventTypeAgentEvaluated.Value(), event.AgentEvaluatedContent{
+		AgentID:    a.runtime.ID(),
+		Subject:    "research:" + url,
+		Confidence: resp.Confidence(),
+		Result:     resp.Content(),
+	})
+	if err != nil {
+		return "", fmt.Errorf("research: record: %w", err)
+	}
+
+	return resp.Content(), nil
 }
 
 // truncate shortens a string to maxLen, adding "..." if truncated.

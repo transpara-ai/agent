@@ -102,6 +102,10 @@ func New(ctx context.Context, cfg Config) (*Agent, error) {
 	}
 
 	// Derive deterministic signing key from agent name.
+	// NOTE: Names must be unique within a deployment. Two agents with the
+	// same name will produce identical keys — their signatures become
+	// indistinguishable on the graph. For cross-deployment uniqueness,
+	// include a deployment-specific salt in the name.
 	seed := sha256.Sum256([]byte("agent:" + cfg.Name))
 	priv := ed25519.NewKeyFromSeed(seed[:])
 	pub := priv.Public().(ed25519.PublicKey)
