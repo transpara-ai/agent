@@ -128,7 +128,11 @@ func (a *Agent) Evaluate(ctx context.Context, subject, prompt string) (string, e
 // Communicate sends a message to another agent through the graph.
 // The channel identifies the communication medium (e.g. "general", "alerts").
 // Emits agent.communicated, observable by the target and all graph subscribers.
+// Returns an error if the agent is retired or suspended.
 func (a *Agent) Communicate(ctx context.Context, targetID types.ActorID, channel string) error {
+	if err := a.checkCanEmit(); err != nil {
+		return fmt.Errorf("communicate: %w", err)
+	}
 	_, err := a.recordAndTrack(event.EventTypeAgentCommunicated.Value(), event.AgentCommunicatedContent{
 		AgentID:   a.runtime.ID(),
 		Recipient: targetID,
@@ -142,7 +146,11 @@ func (a *Agent) Communicate(ctx context.Context, targetID types.ActorID, channel
 
 // Learn records a lesson from experience.
 // Emits agent.learned via graph.Record() (bus-visible, hash-chain safe).
+// Returns an error if the agent is retired or suspended.
 func (a *Agent) Learn(ctx context.Context, lesson, source string) error {
+	if err := a.checkCanEmit(); err != nil {
+		return fmt.Errorf("learn: %w", err)
+	}
 	_, err := a.recordAndTrack(event.EventTypeAgentLearned.Value(), event.AgentLearnedContent{
 		AgentID: a.runtime.ID(),
 		Lesson:  lesson,
@@ -207,7 +215,11 @@ func (a *Agent) Refuse(ctx context.Context, action, reason string) error {
 
 // Introspect performs self-observation via LLM reasoning.
 // Returns the observation text. Emits agent.introspected via graph.Record().
+// Returns an error if the agent is retired or suspended.
 func (a *Agent) Introspect(ctx context.Context, prompt string) (string, error) {
+	if err := a.checkCanEmit(); err != nil {
+		return "", fmt.Errorf("introspect: %w", err)
+	}
 	memory, _ := a.runtime.Memory(20)
 	resp, err := a.runtime.Provider().Reason(ctx, prompt, memory)
 	if err != nil {
@@ -226,7 +238,11 @@ func (a *Agent) Introspect(ctx context.Context, prompt string) (string, error) {
 // Act records an action annotation event on the graph.
 // Used to mark significant actions (e.g. "write_code", "integrate") for observability.
 // Emits agent.acted via graph.Record() (bus-visible, hash-chain safe).
+// Returns an error if the agent is retired or suspended.
 func (a *Agent) Act(ctx context.Context, action, target string) error {
+	if err := a.checkCanEmit(); err != nil {
+		return fmt.Errorf("act: %w", err)
+	}
 	_, err := a.recordAndTrack(event.EventTypeAgentActed.Value(), event.AgentActedContent{
 		AgentID: a.runtime.ID(),
 		Action:  action,
@@ -240,7 +256,11 @@ func (a *Agent) Act(ctx context.Context, action, target string) error {
 
 // Research reads a URL and extracts information via the LLM.
 // Returns the evaluation text. Emits agent.evaluated via graph.Record().
+// Returns an error if the agent is retired or suspended.
 func (a *Agent) Research(ctx context.Context, url, extractionPrompt string) (string, error) {
+	if err := a.checkCanEmit(); err != nil {
+		return "", fmt.Errorf("research: %w", err)
+	}
 	fullPrompt := fmt.Sprintf("Read the following URL and %s\n\nURL: %s", extractionPrompt, url)
 	memory, _ := a.runtime.Memory(5)
 	resp, err := a.runtime.Provider().Reason(ctx, fullPrompt, memory)

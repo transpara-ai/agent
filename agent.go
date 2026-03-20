@@ -230,6 +230,24 @@ func (a *Agent) recordAndTrack(eventTypeName string, content event.EventContent)
 	return ev, nil
 }
 
+// checkCanEmit returns an error if the agent is in a terminal or suspended
+// state. Methods that emit events without driving the FSM (Learn, Act,
+// Communicate, Introspect, etc.) must call this first — otherwise a retired
+// or suspended agent could emit events after its memorial/halt.
+func (a *Agent) checkCanEmit() error {
+	a.mu.Lock()
+	s := a.state
+	a.mu.Unlock()
+	switch s {
+	case egagent.StateRetired:
+		return fmt.Errorf("agent is retired")
+	case egagent.StateSuspended:
+		return fmt.Errorf("agent is suspended")
+	default:
+		return nil
+	}
+}
+
 // --- Accessors ---
 
 // ID returns the agent's actor ID.
