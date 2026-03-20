@@ -90,6 +90,9 @@ type Config struct {
 // The agent is registered in the actor store, its signing key is derived
 // deterministically from its name, and the full boot sequence is emitted
 // (identity, soul, model, authority, state → Idle).
+//
+// Requires: cfg.Graph.Start() must be called before New(). The boot
+// sequence emits events via graph.Record(), which requires a started graph.
 func New(ctx context.Context, cfg Config) (*Agent, error) {
 	if cfg.Graph == nil {
 		return nil, fmt.Errorf("agent: Graph is required")
@@ -189,6 +192,7 @@ func (a *Agent) boot(pk types.PublicKey, cfg Config) error {
 }
 
 // record emits an event through the Graph facade (mutex-safe, bus-integrated).
+// Caller must hold a.mu OR guarantee single-threaded access (e.g. during boot).
 func (a *Agent) record(eventTypeName string, content event.EventContent) (event.Event, error) {
 	eventType := types.MustEventType(eventTypeName)
 
@@ -207,6 +211,20 @@ func (a *Agent) record(eventTypeName string, content event.EventContent) (event.
 	}
 
 	return a.graph.Record(eventType, a.runtime.ID(), content, causes, a.convID, a.signer)
+}
+
+// recordAndTrack atomically records an event and updates lastEvent.
+// Holds a.mu for the entire operation to prevent causality races.
+func (a *Agent) recordAndTrack(eventTypeName string, content event.EventContent) (event.Event, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	ev, err := a.record(eventTypeName, content)
+	if err != nil {
+		return ev, err
+	}
+	a.lastEvent = ev.ID()
+	return ev, nil
 }
 
 // --- Accessors ---

@@ -11,8 +11,30 @@ import (
 // Retire gracefully shuts down the agent.
 // Follows the Retire composition: Introspect → Communicate (farewell) →
 // Memory (archive) → Lifespan (end).
-// Transitions: current state → Retiring → Retired.
+//
+// Resolves any mid-operation state (Escalating, Refusing) back to Idle
+// before beginning the retirement sequence.
+//
+// Transitions: current state → [Idle →] Retiring → Retired.
 func (a *Agent) Retire(ctx context.Context, reason string) error {
+	// Resolve mid-operation states that can't transition directly to Retiring.
+	// Escalating → Idle, Refusing → Idle are valid FSM transitions.
+	state := a.State()
+	switch state {
+	case egagent.StateEscalating, egagent.StateRefusing:
+		if err := a.transitionTo(egagent.StateIdle); err != nil {
+			return fmt.Errorf("retire: resolve %s: %w", state, err)
+		}
+	case egagent.StateWaiting:
+		// Waiting → Processing → Idle → Retiring would be cleanest,
+		// but Waiting can also go to Idle directly.
+		if err := a.transitionTo(egagent.StateIdle); err != nil {
+			return fmt.Errorf("retire: resolve %s: %w", state, err)
+		}
+	case egagent.StateRetired:
+		return fmt.Errorf("retire: agent already retired")
+	}
+
 	if err := a.transitionTo(egagent.StateRetiring); err != nil {
 		return fmt.Errorf("retire: %w", err)
 	}
@@ -25,28 +47,25 @@ func (a *Agent) Retire(ctx context.Context, reason string) error {
 		a.mu.Unlock()
 	}
 
-	// Communicate: farewell message.
-	farewellEv, err := a.record(event.EventTypeAgentCommunicated.Value(), event.AgentCommunicatedContent{
+	// Communicate: farewell on the "lifecycle" channel.
+	_, _ = a.recordAndTrack(event.EventTypeAgentCommunicated.Value(), event.AgentCommunicatedContent{
 		AgentID:   a.runtime.ID(),
 		Recipient: a.runtime.ID(), // farewell to all — self-addressed
-		Channel:   fmt.Sprintf("Agent %s (%s) retiring: %s", a.name, a.role, reason),
+		Channel:   "lifecycle",
 	})
-	if err == nil {
-		a.mu.Lock()
-		a.lastEvent = farewellEv.ID()
-		a.mu.Unlock()
-	}
+
+	// Memory: archive — record the retirement in the agent's memory.
+	_, _ = a.recordAndTrack(event.EventTypeAgentMemoryUpdated.Value(), event.AgentMemoryUpdatedContent{
+		AgentID: a.runtime.ID(),
+		Key:     "retirement",
+		Action:  "archive",
+	})
 
 	// Lifespan: end.
-	lifespanEv, err := a.record(event.EventTypeAgentLifespanEnded.Value(), event.AgentLifespanEndedContent{
+	_, _ = a.recordAndTrack(event.EventTypeAgentLifespanEnded.Value(), event.AgentLifespanEndedContent{
 		AgentID: a.runtime.ID(),
 		Reason:  reason,
 	})
-	if err == nil {
-		a.mu.Lock()
-		a.lastEvent = lifespanEv.ID()
-		a.mu.Unlock()
-	}
 
 	// Transition to Retired (terminal state).
 	if err := a.transitionTo(egagent.StateRetired); err != nil {
@@ -54,8 +73,11 @@ func (a *Agent) Retire(ctx context.Context, reason string) error {
 	}
 
 	// Update actor store: memorial.
-	if !a.lastEvent.IsZero() {
-		_, _ = a.graph.ActorStore().Memorial(a.runtime.ID(), a.lastEvent)
+	a.mu.Lock()
+	lastID := a.lastEvent
+	a.mu.Unlock()
+	if !lastID.IsZero() {
+		_, _ = a.graph.ActorStore().Memorial(a.runtime.ID(), lastID)
 	}
 
 	return nil

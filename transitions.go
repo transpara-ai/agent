@@ -9,16 +9,19 @@ import (
 
 // transitionTo changes the agent's operational state, validating the transition
 // and emitting an agent.state.changed event on the graph.
+//
+// Holds a.mu for the entire operation: state validation, state update,
+// event recording, and lastEvent update are atomic.
 func (a *Agent) transitionTo(target egagent.OperationalState) error {
 	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	prev := a.state
 	next, err := a.state.TransitionTo(target)
 	if err != nil {
-		a.mu.Unlock()
 		return fmt.Errorf("invalid transition %s → %s: %w", prev, target, err)
 	}
 	a.state = next
-	a.mu.Unlock()
 
 	// Emit state change event.
 	ev, err := a.record(event.EventTypeAgentStateChanged.Value(), event.AgentStateChangedContent{
@@ -32,10 +35,7 @@ func (a *Agent) transitionTo(target egagent.OperationalState) error {
 		return nil
 	}
 
-	a.mu.Lock()
 	a.lastEvent = ev.ID()
-	a.mu.Unlock()
-
 	return nil
 }
 
