@@ -23,6 +23,19 @@ func (a *Agent) EmitBudgetAllocated(maxTokens int, maxCostUSD float64) error {
 	return nil
 }
 
+// EmitBudgetAdjusted records a budget reallocation by the Allocator.
+// Returns an error if the agent is retired or suspended.
+func (a *Agent) EmitBudgetAdjusted(content event.AgentBudgetAdjustedContent) error {
+	if err := a.checkCanEmit(); err != nil {
+		return fmt.Errorf("budget adjusted: %w", err)
+	}
+	_, err := a.recordAndTrack(event.EventTypeAgentBudgetAdjusted.Value(), content)
+	if err != nil {
+		return fmt.Errorf("budget adjusted: %w", err)
+	}
+	return nil
+}
+
 // EmitBudgetExhausted records that a budget limit has been reached.
 // Returns an error if the agent is retired or suspended.
 func (a *Agent) EmitBudgetExhausted(resource string) error {
