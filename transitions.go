@@ -48,6 +48,17 @@ func (a *Agent) transitionLocked(target egagent.OperationalState) error {
 	return nil
 }
 
+// ResetToIdle forces the agent back to Idle state without validation.
+// Used for recovery when the agent is stuck in Processing due to failed
+// event recording during a transition back from Processing.
+// Does NOT emit a state change event — this is a recovery path, not a
+// normal transition.
+func (a *Agent) ResetToIdle() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.state = egagent.StateIdle
+}
+
 // Suspend puts the agent into suspended state (e.g., Guardian HALT).
 // Can only transition from Idle or Processing.
 func (a *Agent) Suspend() error {
