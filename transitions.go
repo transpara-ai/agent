@@ -3,8 +3,8 @@ package agent
 import (
 	"fmt"
 
-	egagent "github.com/lovyou-ai/eventgraph/go/pkg/agent"
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
+	egagent "github.com/transpara-ai/eventgraph/go/pkg/agent"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
 )
 
 // transitionTo changes the agent's operational state, validating the transition

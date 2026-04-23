@@ -3,7 +3,7 @@ package agent
 import (
 	"fmt"
 
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
 )
 
 // EmitBudgetAllocated records a budget allocation event on the graph.

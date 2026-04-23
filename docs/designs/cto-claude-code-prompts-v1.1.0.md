@@ -25,9 +25,9 @@ complete and verify before moving to the next. Do not skip ahead. Do not combine
 
 ## Prerequisites
 
-- Design spec `docs/designs/cto-design.md` (v1.1.0) is committed to `lovyou-ai-hive`
+- Design spec `docs/designs/cto-design.md` (v1.1.0) is committed to `hive`
 - SysMon, Allocator are graduated and running
-- You have both repos: `lovyou-ai-hive` and `lovyou-ai-eventgraph`
+- You have both repos: `hive` and `eventgraph`
 
 ---
 
@@ -70,7 +70,7 @@ Read the CTO design spec at docs/designs/cto-design.md (v1.1.0), section 8
 (Event Types). Then look at how agent.budget.adjusted was created (the Allocator
 added it). Follow that exact pattern.
 
-In lovyou-ai-eventgraph:
+In eventgraph:
 
 1. Add event type constants:
    EventTypeGapDetected     = types.MustEventType("hive.gap.detected")
@@ -107,7 +107,7 @@ In lovyou-ai-eventgraph:
 
 Run all eventgraph tests. Run vet. Nothing breaks.
 
-Commit to lovyou-ai-eventgraph with:
+Commit to eventgraph with:
 "feat: add hive.gap.detected and hive.directive.issued event types
 
 - GapDetectedContent: category, missing_role, evidence, severity
@@ -123,7 +123,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 ## Prompt 1 — Agent Emit Methods (PR 1)
 
 ```
-In lovyou-ai-agent, add two new emit methods following the EXACT pattern of
+In agent, add two new emit methods following the EXACT pattern of
 EmitBudgetAdjusted (in budget.go:26-37):
 
     func (a *Agent) EmitBudgetAdjusted(content event.AgentBudgetAdjustedContent) error {
@@ -168,7 +168,7 @@ event.EventTypeGapDetected — it must be event.EventTypeGapDetected.Value().
 Verify the import path for the new event types (they were created in Prompt 0.5).
 Run tests. Run vet.
 
-Commit to lovyou-ai-agent with:
+Commit to agent with:
 "feat: add EmitGapDetected and EmitDirective methods for CTO agent
 
 Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
@@ -178,7 +178,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 
 ## Prompt 2 — CTO Glue Code (PR 2)
 
-This is the main implementation PR in lovyou-ai-hive.
+This is the main implementation PR in hive.
 
 ```
 Read the CTO design spec at docs/designs/cto-design.md (v1.1.0), sections 7
@@ -349,7 +349,7 @@ alerts and "CEO/Matt" references) is REPLACED entirely.
    boot order verification (guardian, sysmon, allocator, cto, strategist,
    planner, implementer).
 
-4. The CTO site persona already exists in lovyou-ai-site/graph/personas/cto.md
+4. The CTO site persona already exists in site/graph/personas/cto.md
    but with legacy content (same 117-line tech-lead prompt). REPLACE its
    content with the governance-focused persona from design spec section 10.
    Ensure the YAML frontmatter has:
@@ -459,7 +459,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 ```
 Rebuild the hive binary and restart the service:
 
-cd ~/transpara-ai/repos/lovyou-ai-hive
+cd ~/transpara-ai/repos/hive
 go build -o /home/transpara/bin/hive ./cmd/hive
 systemctl --user restart lovyou-hive.service
 sleep 10

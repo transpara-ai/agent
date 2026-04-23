@@ -3,7 +3,7 @@ package agent
 import (
 	"fmt"
 
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
 )
 
 // EmitSiteOpReceived records the anchor event for a site op.

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
-	"github.com/lovyou-ai/eventgraph/go/pkg/trust"
-	"github.com/lovyou-ai/eventgraph/go/pkg/types"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/trust"
+	"github.com/transpara-ai/eventgraph/go/pkg/types"
 )
 
 // RecordVerifiedWork updates trust after successful work.
