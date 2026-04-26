@@ -18,3 +18,18 @@ func (a *Agent) EmitHealthReport(content event.HealthReportContent) error {
 	}
 	return nil
 }
+
+// EmitAgentVitalReported records a single agent.vital.reported event on the
+// graph. Emitted by SysMon once per AgentVital per health-report cycle; the
+// HealthReportCycleID on content correlates each vital back to the umbrella
+// health.report event in the same cycle.
+func (a *Agent) EmitAgentVitalReported(content event.AgentVitalReportedContent) error {
+	if err := a.checkCanEmit(); err != nil {
+		return fmt.Errorf("agent vital reported: %w", err)
+	}
+	_, err := a.recordAndTrack(event.EventTypeAgentVitalReported.Value(), content)
+	if err != nil {
+		return fmt.Errorf("agent vital reported: %w", err)
+	}
+	return nil
+}
