@@ -7,6 +7,7 @@ import (
 
 	egagent "github.com/transpara-ai/eventgraph/go/pkg/agent"
 	"github.com/transpara-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/types"
 )
 
 // siteEmitCase is one emitter under test. emit invokes the method on the
@@ -46,7 +47,7 @@ func siteEmitCases() []siteEmitCase {
 			emit: func(a *Agent) error {
 				return a.EmitSiteOpTranslated(event.SiteOpTranslatedContent{
 					ExternalRef:  ref,
-					BusEventID:   "evt_translated_1",
+					BusEventID:   types.MustEventID("01900000-0000-7000-8000-000000000001"),
 					TranslatedAt: now,
 				})
 			},
@@ -68,7 +69,7 @@ func siteEmitCases() []siteEmitCase {
 			emit: func(a *Agent) error {
 				return a.EmitSiteOpMirrored(event.SiteOpMirroredContent{
 					ExternalRef:   ref,
-					MirrorEventID: "evt_mirror_1",
+					MirrorEventID: types.MustEventID("01900000-0000-7000-8000-000000000002"),
 					HTTPStatus:    200,
 					MirroredAt:    now,
 				})

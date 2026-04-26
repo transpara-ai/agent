@@ -7,6 +7,7 @@ import (
 
 	egagent "github.com/transpara-ai/eventgraph/go/pkg/agent"
 	"github.com/transpara-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/types"
 )
 
 type specEmitCase struct {
@@ -24,7 +25,7 @@ func specEmitCases() []specEmitCase {
 			emit: func(a *Agent) error {
 				return a.EmitSpecIngested(event.SpecIngestedContent{
 					SpecRef:    "spec_test_1",
-					SourceOpID: "evt_source_1",
+					SourceOpID: types.MustEventID("01900000-0000-7000-8000-000000000003"),
 					IngestedAt: now,
 				})
 			},
