@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	egagent "github.com/lovyou-ai/eventgraph/go/pkg/agent"
-	"github.com/lovyou-ai/eventgraph/go/pkg/decision"
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
-	"github.com/lovyou-ai/eventgraph/go/pkg/types"
+	egagent "github.com/transpara-ai/eventgraph/go/pkg/agent"
+	"github.com/transpara-ai/eventgraph/go/pkg/decision"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/types"
 )
 
 // Reason sends a prompt to the agent's LLM and returns the response.

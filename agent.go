@@ -29,11 +29,11 @@ import (
 	"fmt"
 	"sync"
 
-	egagent "github.com/lovyou-ai/eventgraph/go/pkg/agent"
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
-	"github.com/lovyou-ai/eventgraph/go/pkg/graph"
-	"github.com/lovyou-ai/eventgraph/go/pkg/intelligence"
-	"github.com/lovyou-ai/eventgraph/go/pkg/types"
+	egagent "github.com/transpara-ai/eventgraph/go/pkg/agent"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/graph"
+	"github.com/transpara-ai/eventgraph/go/pkg/intelligence"
+	"github.com/transpara-ai/eventgraph/go/pkg/types"
 )
 
 // Role identifies an agent's function. Constants are defined by the

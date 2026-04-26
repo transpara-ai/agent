@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	egagent "github.com/lovyou-ai/eventgraph/go/pkg/agent"
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
+	egagent "github.com/transpara-ai/eventgraph/go/pkg/agent"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
 )
 
 type specEmitCase struct {

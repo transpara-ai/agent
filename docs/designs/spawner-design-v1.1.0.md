@@ -714,12 +714,12 @@ Following the established pattern (Allocator commit `f9b4cdc`, CTO gap events):
 3. Register unmarshalers in `content_unmarshal.go`
 4. Add to `DefaultRegistry()`
 
-### Agent Emit Methods (lovyou-ai-agent)
+### Agent Emit Methods (agent)
 
 Following the `EmitBudgetAdjusted` / `EmitGapDetected` pattern:
 
 ```go
-// In lovyou-ai-agent/spawn.go (new file)
+// In agent/spawn.go (new file)
 
 func (a *Agent) EmitRoleProposed(content event.RoleProposedContent) error {
     if err := a.checkCanEmit(); err != nil {
@@ -1023,7 +1023,7 @@ spawn. This is acceptable for v1.0 if hot-add blocks graduation.
 
 ## 12. Site Persona
 
-Location: `lovyou-ai-site/graph/personas/spawner.md`
+Location: `site/graph/personas/spawner.md`
 
 ```markdown
 ---
@@ -1160,24 +1160,24 @@ just active agents.
 
 | File | Repository | Purpose |
 |------|-----------|---------|
-| `pkg/loop/spawner.go` | lovyou-ai-hive | /spawn command parsing, validation, emission, enrichment |
-| `pkg/loop/spawner_test.go` | lovyou-ai-hive | Unit tests |
-| `spawn.go` | lovyou-ai-agent | `EmitRoleProposed()`, `EmitRoleApproved()`, `EmitRoleRejected()` |
-| Event type constants | lovyou-ai-eventgraph | `hive.role.proposed`, `hive.role.approved`, `hive.role.rejected` |
-| Content structs | lovyou-ai-eventgraph | `RoleProposedContent`, `RoleApprovedContent`, `RoleRejectedContent` |
+| `pkg/loop/spawner.go` | hive | /spawn command parsing, validation, emission, enrichment |
+| `pkg/loop/spawner_test.go` | hive | Unit tests |
+| `spawn.go` | agent | `EmitRoleProposed()`, `EmitRoleApproved()`, `EmitRoleRejected()` |
+| Event type constants | eventgraph | `hive.role.proposed`, `hive.role.approved`, `hive.role.rejected` |
+| Content structs | eventgraph | `RoleProposedContent`, `RoleApprovedContent`, `RoleRejectedContent` |
 
 ### Files to Modify
 
 | File | Repository | Change |
 |------|-----------|--------|
-| `pkg/hive/agentdef.go` | lovyou-ai-hive | Add Spawner to StarterAgents() at index 4 (after cto) |
-| `agents/spawner.md` | lovyou-ai-hive | Create prompt file (or inline via mission()) |
-| `agents/guardian.md` | lovyou-ai-hive | Add Spawn Proposals evaluation section + /approve and /reject commands |
-| `agents/allocator.md` | lovyou-ai-hive | Add awareness of hive.role.approved for budget allocation |
-| `pkg/loop/loop.go` | lovyou-ai-hive | Wire spawn command processing and observation enrichment |
-| `pkg/hive/runtime.go` | lovyou-ai-hive | Add watchForApprovedRoles() for runtime spawn after approval+budget |
-| eventgraph unmarshal | lovyou-ai-eventgraph | Register unmarshalers for three new types |
-| eventgraph registry | lovyou-ai-eventgraph | Add three types to DefaultRegistry() |
+| `pkg/hive/agentdef.go` | hive | Add Spawner to StarterAgents() at index 4 (after cto) |
+| `agents/spawner.md` | hive | Create prompt file (or inline via mission()) |
+| `agents/guardian.md` | hive | Add Spawn Proposals evaluation section + /approve and /reject commands |
+| `agents/allocator.md` | hive | Add awareness of hive.role.approved for budget allocation |
+| `pkg/loop/loop.go` | hive | Wire spawn command processing and observation enrichment |
+| `pkg/hive/runtime.go` | hive | Add watchForApprovedRoles() for runtime spawn after approval+budget |
+| eventgraph unmarshal | eventgraph | Register unmarshalers for three new types |
+| eventgraph registry | eventgraph | Add three types to DefaultRegistry() |
 
 ### Guardian Prompt Changes
 

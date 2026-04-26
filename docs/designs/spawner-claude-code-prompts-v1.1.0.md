@@ -29,10 +29,10 @@ sequence yet. Take it slow.
 
 ## Prerequisites
 
-- Design spec `docs/designs/spawner-design.md` (v1.1.0) is committed to `lovyou-ai-hive`
+- Design spec `docs/designs/spawner-design.md` (v1.1.0) is committed to `hive`
 - CTO agent is graduated and emitting `/gap` events
-- You are in the `lovyou-ai-hive` repo root
-- You have access to `lovyou-ai-eventgraph` and `lovyou-ai-agent` (as sibling directories or Go modules)
+- You are in the `hive` repo root
+- You have access to `eventgraph` and `agent` (as sibling directories or Go modules)
 
 ---
 
@@ -69,7 +69,7 @@ Using the EXACT pattern established by the CTO event types (hive.gap.detected
 and hive.directive.issued — find them in the eventgraph codebase and follow
 their pattern precisely), create three new event types.
 
-WORK IN THE lovyou-ai-eventgraph REPOSITORY.
+WORK IN THE eventgraph REPOSITORY.
 
 1. Add three event type constants (follow existing naming pattern):
    - hive.role.proposed
@@ -127,7 +127,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 Read the Spawner design spec at docs/designs/spawner-design.md (v1.1.0),
 section 8 (Agent Emit Methods).
 
-WORK IN THE lovyou-ai-agent REPOSITORY.
+WORK IN THE agent REPOSITORY.
 
 Using the EXACT pattern from the CTO's EmitGapDetected() and EmitDirective()
 methods (find them in the agent codebase — likely in gap.go or cto.go),
@@ -163,7 +163,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 Read the Spawner design spec at docs/designs/spawner-design.md (v1.1.0),
 sections 7 (Command Mechanism) and 13 (Behavioral Constraints).
 
-WORK IN THE lovyou-ai-hive REPOSITORY.
+WORK IN THE hive REPOSITORY.
 
 Create the spawn command infrastructure following the EXACT pattern used by
 the CTO's gap/directive commands in pkg/loop/cto.go.
@@ -286,7 +286,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 Read the Spawner design spec at docs/designs/spawner-design.md (v1.1.0),
 sections 6 (Prompt File) and 7 (Observation Enrichment).
 
-WORK IN THE lovyou-ai-hive REPOSITORY.
+WORK IN THE hive REPOSITORY.
 
 1. Create agents/spawner.md
    - Use the v1.1.0 prompt content from the design spec section 6
@@ -369,7 +369,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 Read the Spawner design spec at docs/designs/spawner-design.md (v1.1.0),
 section 9 (Guardian Governance Gate).
 
-WORK IN THE lovyou-ai-hive REPOSITORY.
+WORK IN THE hive REPOSITORY.
 
 The Guardian needs to evaluate spawn proposals and emit approve/reject decisions.
 This is the first time Guardian gets its own command types.
@@ -474,7 +474,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 Read the Spawner design spec at docs/designs/spawner-design.md (v1.1.0),
 sections 10 (Allocator Budget Gate) and the Role section (AgentDef).
 
-WORK IN THE lovyou-ai-hive REPOSITORY.
+WORK IN THE hive REPOSITORY.
 
 1. Update agents/allocator.md — add a ## Role Approval Awareness section:
 
@@ -560,7 +560,7 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 Read the Spawner design spec at docs/designs/spawner-design.md (v1.1.0),
 section 11 (Runtime Integration).
 
-WORK IN THE lovyou-ai-hive REPOSITORY.
+WORK IN THE hive REPOSITORY.
 
 This is the most delicate prompt. It adds the ability for the runtime to
 spawn new agents mid-session based on approved, budgeted role proposals.
@@ -758,10 +758,10 @@ Co-Authored-By: transpara-ai (transpara-ai@transpara.com)"
 Read the Spawner design spec at docs/designs/spawner-design.md (v1.1.0),
 sections 12 (Site Persona) and 14 (Testing Strategy).
 
-WORK IN THE lovyou-ai-hive REPOSITORY.
+WORK IN THE hive REPOSITORY.
 
 1. Create the site persona file. Check where other site personas live
-   (lovyou-ai-site/graph/personas/ or similar). Create spawner.md there
+   (site/graph/personas/ or similar). Create spawner.md there
    using the content from design spec section 12. Follow the exact format
    used by other persona files (YAML frontmatter or plain markdown —
    match the existing pattern).
@@ -882,12 +882,12 @@ This is the moment. If it works, the civilization can grow itself.
 This implementation touches three repositories in sequence:
 
 ```
-Prompt 1: lovyou-ai-eventgraph  (event types)
-Prompt 2: lovyou-ai-agent       (emit methods)
-Prompts 3-8: lovyou-ai-hive     (everything else)
+Prompt 1: eventgraph  (event types)
+Prompt 2: agent       (emit methods)
+Prompts 3-8: hive     (everything else)
 ```
 
-After Prompts 1 and 2, run `go mod tidy` in lovyou-ai-hive to pick up the
+After Prompts 1 and 2, run `go mod tidy` in hive to pick up the
 new event types and emit methods. If using local module replacements
 (replace directives in go.mod), this should work automatically.
 

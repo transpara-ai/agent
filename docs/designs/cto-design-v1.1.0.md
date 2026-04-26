@@ -500,7 +500,7 @@ type DirectiveIssuedContent struct {
 
 Following the `EmitBudgetAdjusted` pattern (confirmed in recon — `checkCanEmit()`
 → `recordAndTrack(EventType.Value(), content)`), add `EmitGapDetected` and
-`EmitDirective` methods to the agent package (`lovyou-ai-agent`):
+`EmitDirective` methods to the agent package (`agent`):
 
 ```go
 func (a *Agent) EmitGapDetected(content event.GapDetectedContent) error {
@@ -527,7 +527,7 @@ func (a *Agent) EmitDirective(content event.DirectiveIssuedContent) error {
 ```
 
 **NOTE:** The `.Value()` wrapping on EventType is required — confirmed by recon
-of `EmitBudgetAdjusted` in `lovyou-ai-agent/budget.go:26-37`. The v1.0.0 design
+of `EmitBudgetAdjusted` in `agent/budget.go:26-37`. The v1.0.0 design
 showed bare `event.EventTypeGapDetected`; the actual pattern wraps with `.Value()`.
 
 ---
@@ -582,7 +582,7 @@ The enrichment counts events by subtype (`created`, `assigned`, `completed`,
 
 ## 10. Site Persona File
 
-Location: `lovyou-ai-site/graph/personas/cto.md`
+Location: `site/graph/personas/cto.md`
 
 **NOTE:** A legacy site persona already exists with the same 117-line
 operational tech-lead content as the legacy `agents/cto.md`. It will be
@@ -738,22 +738,22 @@ Tier 1 (deterministic, no LLM):
 
 | File | Repository | Purpose |
 |------|-----------|---------|
-| `pkg/loop/cto.go` | lovyou-ai-hive | /gap and /directive command parsing, validation, emission, enrichment |
-| `pkg/loop/cto_test.go` | lovyou-ai-hive | Unit tests |
-| `pkg/loop/cto_integration_test.go` | lovyou-ai-hive | Integration tests |
-| `cto.go` (or `gap.go`) | lovyou-ai-agent | `EmitGapDetected()` and `EmitDirective()` methods |
+| `pkg/loop/cto.go` | hive | /gap and /directive command parsing, validation, emission, enrichment |
+| `pkg/loop/cto_test.go` | hive | Unit tests |
+| `pkg/loop/cto_integration_test.go` | hive | Integration tests |
+| `cto.go` (or `gap.go`) | agent | `EmitGapDetected()` and `EmitDirective()` methods |
 
 ### Files to Modify
 
 | File | Repository | Change |
 |------|-----------|--------|
-| `pkg/hive/agentdef.go` | lovyou-ai-hive | Add CTO to StarterAgents() at index 3 (after allocator) |
-| `agents/cto.md` | lovyou-ai-hive | **Replace entirely** — legacy 117-line tech-lead prompt → gap-detection CTO |
-| `agents/guardian.md` | lovyou-ai-hive | Add CTO awareness section |
-| eventgraph event types | lovyou-ai-eventgraph | Register `hive.gap.detected` and `hive.directive.issued` |
-| eventgraph content | lovyou-ai-eventgraph | `GapDetectedContent` and `DirectiveIssuedContent` structs |
-| eventgraph unmarshal | lovyou-ai-eventgraph | Register unmarshalers for both types |
-| `pkg/loop/loop.go` | lovyou-ai-hive | Wire CTO command processing and observation enrichment |
+| `pkg/hive/agentdef.go` | hive | Add CTO to StarterAgents() at index 3 (after allocator) |
+| `agents/cto.md` | hive | **Replace entirely** — legacy 117-line tech-lead prompt → gap-detection CTO |
+| `agents/guardian.md` | hive | Add CTO awareness section |
+| eventgraph event types | eventgraph | Register `hive.gap.detected` and `hive.directive.issued` |
+| eventgraph content | eventgraph | `GapDetectedContent` and `DirectiveIssuedContent` structs |
+| eventgraph unmarshal | eventgraph | Register unmarshalers for both types |
+| `pkg/loop/loop.go` | hive | Wire CTO command processing and observation enrichment |
 
 ### Event Type Registration
 

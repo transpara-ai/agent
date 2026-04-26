@@ -3,7 +3,7 @@ package agent
 import (
 	"fmt"
 
-	"github.com/lovyou-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/event"
 )
 
 // EmitCodeReview emits a code.review.submitted event on the chain.

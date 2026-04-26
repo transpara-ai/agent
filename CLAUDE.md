@@ -19,7 +19,7 @@ The `eventgraph` dependency is a local module — check `go.mod` for the replace
 
 ## Architecture
 
-This is the `github.com/lovyou-ai/agent` Go package — the **universal Agent abstraction** for the Transpara AI hive. Every agent in the hive (Mind, CTO, Guardian, SysMon, Allocator, etc.) is an instance of this type.
+This is the `github.com/transpara-ai/agent` Go package — the **universal Agent abstraction** for the Transpara AI hive. Every agent in the hive (Mind, CTO, Guardian, SysMon, Allocator, etc.) is an instance of this type.
 
 ### Core Type
 
