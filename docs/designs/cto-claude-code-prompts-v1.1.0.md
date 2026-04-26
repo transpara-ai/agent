@@ -461,10 +461,10 @@ Rebuild the hive binary and restart the service:
 
 cd ~/transpara-ai/repos/hive
 go build -o /home/transpara/bin/hive ./cmd/hive
-systemctl --user restart lovyou-hive.service
+systemctl --user restart transpara-hive.service
 sleep 10
-systemctl --user status lovyou-hive.service
-journalctl --user -u lovyou-hive.service --no-pager -n 40
+systemctl --user status transpara-hive.service
+journalctl --user -u transpara-hive.service --no-pager -n 40
 
 Verify:
 1. CTO boots as the fourth agent (after guardian, sysmon, allocator)
