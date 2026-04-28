@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: agent
+
+      # Checkout sibling repo (go.mod replace directive points to ../eventgraph/go)
+      - uses: actions/checkout@v4
+        with:
+          repository: transpara-ai/eventgraph
+          path: eventgraph
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: agent/go.sum
+
+      - run: go build ./...
+        working-directory: agent
+
+      - run: go test ./... -count=1 -short
+        working-directory: agent
