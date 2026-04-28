@@ -41,6 +41,34 @@ func specEmitCases() []specEmitCase {
 				})
 			},
 		},
+		{
+			name:     "EmitRefineryIntakeReceived",
+			wantType: "refinery.intake.received",
+			emit: func(a *Agent) error {
+				return a.EmitRefineryIntakeReceived(event.RefineryIntakeReceivedContent{IntakeRef: "site-node-1", SpaceID: "space-1", Title: "Spec", Actor: "Tester", ActorID: "u1", ArtifactCount: 1, ReceivedAt: now})
+			},
+		},
+		{
+			name:     "EmitRefineryArtifactAttached",
+			wantType: "refinery.artifact.attached",
+			emit: func(a *Agent) error {
+				return a.EmitRefineryArtifactAttached(event.RefineryArtifactAttachedContent{IntakeRef: "site-node-1", ArtifactRef: "doc-1", Filename: "spec.md", Hash: "sha256:abc", AttachedAt: now})
+			},
+		},
+		{
+			name:     "EmitRefineryIntakeClassified",
+			wantType: "refinery.intake.classified",
+			emit: func(a *Agent) error {
+				return a.EmitRefineryIntakeClassified(event.RefineryIntakeClassifiedContent{IntakeRef: "site-node-1", ClassifierKind: "spec", RecommendedState: "spec.draft", PersistedState: "intake.raw", ArtifactCount: 1, ClassifiedAt: now})
+			},
+		},
+		{
+			name:     "EmitRefineryStateTransitioned",
+			wantType: "refinery.state.transitioned",
+			emit: func(a *Agent) error {
+				return a.EmitRefineryStateTransitioned(event.RefineryStateTransitionedContent{IntakeRef: "site-node-1", FromState: "", ToState: "intake.raw", Reason: "all submissions start as raw intake", TransitionedAt: now})
+			},
+		},
 	}
 }
 
