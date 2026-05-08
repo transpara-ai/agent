@@ -37,12 +37,14 @@ func newTestAgent(t *testing.T, name string) *Agent {
 	t.Cleanup(func() { _ = g.Close() })
 
 	a, err := New(context.Background(), Config{
-		Role:     "test",
-		Name:     name,
-		Graph:    g,
-		Provider: &mockProvider{},
-		Model:    "mock-model",
-		CostTier: "standard",
+		Role:         "test",
+		Name:         name,
+		Graph:        g,
+		Provider:     &mockProvider{},
+		Environment:  IdentityEnvironmentTest,
+		IdentityMode: IdentityModeDeterministic,
+		Model:        "mock-model",
+		CostTier:     "standard",
 	})
 	if err != nil {
 		t.Fatalf("agent.New: %v", err)
