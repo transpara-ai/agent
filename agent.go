@@ -23,10 +23,8 @@
 package agent
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"sync"
@@ -72,18 +70,6 @@ type Config struct {
 	Graph    *graph.Graph
 	Provider intelligence.Provider
 
-	// Environment controls identity guardrails. The zero value is production.
-	Environment IdentityEnvironment
-
-	// IdentityMode controls signing key creation. The zero value generates
-	// production-safe key material. Deterministic mode is rejected in production
-	// and is intended only for explicit tests or local development fixtures.
-	IdentityMode IdentityMode
-
-	// SigningKey optionally supplies generated or externally managed key
-	// material. When unset, New generates a fresh Ed25519 keypair.
-	SigningKey ed25519.PrivateKey
-
 	// Model is the LLM model identifier for the agent boot sequence.
 	Model string
 
@@ -99,33 +85,11 @@ type Config struct {
 	ConversationID types.ConversationID
 }
 
-// IdentityEnvironment identifies the operational environment for identity
-// guardrails. The zero value is production to fail closed.
-type IdentityEnvironment string
-
-const (
-	IdentityEnvironmentProduction  IdentityEnvironment = "production"
-	IdentityEnvironmentDevelopment IdentityEnvironment = "development"
-	IdentityEnvironmentTest        IdentityEnvironment = "test"
-)
-
-// IdentityMode identifies how an agent signing key is created.
-type IdentityMode string
-
-const (
-	// IdentityModeGenerated uses generated or externally supplied key material.
-	IdentityModeGenerated IdentityMode = "generated"
-	// IdentityModeDeterministic derives the key from sha256("agent:"+Name).
-	// It is unsafe for production and only allowed in development/test.
-	IdentityModeDeterministic IdentityMode = "deterministic"
-)
-
 // New creates and boots a new Agent.
 //
-// The agent is registered in the actor store, its signing key is generated
-// by default, and the full boot sequence is emitted (identity, soul, model,
-// authority, state → Idle). Deterministic signing keys derived from public
-// names are accepted only when explicitly requested for development or tests.
+// The agent is registered in the actor store, its signing key is derived
+// deterministically from its name, and the full boot sequence is emitted
+// (identity, soul, model, authority, state → Idle).
 //
 // Requires: cfg.Graph.Start() must be called before New(). The boot
 // sequence emits events via graph.Record(), which requires a started graph.
@@ -137,12 +101,15 @@ func New(ctx context.Context, cfg Config) (*Agent, error) {
 		return nil, fmt.Errorf("agent: Provider is required")
 	}
 
-	priv, err := signingKey(cfg)
-	if err != nil {
-		return nil, err
-	}
+	// Derive deterministic signing key from agent name.
+	// NOTE: Names must be unique within a deployment. Two agents with the
+	// same name will produce identical keys — their signatures become
+	// indistinguishable on the graph. For cross-deployment uniqueness,
+	// include a deployment-specific salt in the name.
+	seed := sha256.Sum256([]byte("agent:" + cfg.Name))
+	priv := ed25519.NewKeyFromSeed(seed[:])
 	pub := priv.Public().(ed25519.PublicKey)
-	signer := &ed25519Signer{key: priv}
+	signer := &deterministicSigner{key: priv}
 
 	// Register in actor store.
 	pk, err := types.NewPublicKey([]byte(pub))
@@ -214,7 +181,7 @@ func (a *Agent) boot(pk types.PublicKey, cfg Config) error {
 		cfg.SoulValues,
 		types.MustDomainScope("hive"),
 		a.runtime.ID(), // self-grant at boot; human approves via Spawner
-		true,           // emit identity lifecycle event for this registration
+		false,          // withIdentity=false, Spawner handles identity
 	)
 
 	for _, content := range bootEvents {
@@ -319,55 +286,12 @@ func (a *Agent) LastEvent() types.EventID {
 	return a.lastEvent
 }
 
-func signingKey(cfg Config) (ed25519.PrivateKey, error) {
-	env := cfg.Environment
-	if env == "" {
-		env = IdentityEnvironmentProduction
-	}
-	mode := cfg.IdentityMode
-	if mode == "" {
-		mode = IdentityModeGenerated
-	}
-
-	switch mode {
-	case IdentityModeGenerated:
-		if cfg.SigningKey != nil {
-			if len(cfg.SigningKey) != ed25519.PrivateKeySize {
-				return nil, fmt.Errorf("agent: SigningKey must be %d bytes", ed25519.PrivateKeySize)
-			}
-			if env == IdentityEnvironmentProduction && isPublicNameDerivedKey(cfg.Name, cfg.SigningKey) {
-				return nil, fmt.Errorf("agent: public-name-derived identity is blocked in production")
-			}
-			return cfg.SigningKey, nil
-		}
-		_, priv, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			return nil, fmt.Errorf("agent: generate signing key: %w", err)
-		}
-		return priv, nil
-	case IdentityModeDeterministic:
-		if env == IdentityEnvironmentProduction {
-			return nil, fmt.Errorf("agent: deterministic identity is blocked in production")
-		}
-		seed := sha256.Sum256([]byte("agent:" + cfg.Name))
-		return ed25519.NewKeyFromSeed(seed[:]), nil
-	default:
-		return nil, fmt.Errorf("agent: unsupported identity mode %q", mode)
-	}
-}
-
-func isPublicNameDerivedKey(name string, key ed25519.PrivateKey) bool {
-	seed := sha256.Sum256([]byte("agent:" + name))
-	deterministic := ed25519.NewKeyFromSeed(seed[:])
-	return bytes.Equal(key.Public().(ed25519.PublicKey), deterministic.Public().(ed25519.PublicKey))
-}
-
-// ed25519Signer signs graph events with the agent's private key.
-type ed25519Signer struct {
+// deterministicSigner signs with a key derived from the agent name.
+type deterministicSigner struct {
 	key ed25519.PrivateKey
 }
 
-func (s *ed25519Signer) Sign(data []byte) (types.Signature, error) {
+func (s *deterministicSigner) Sign(data []byte) (types.Signature, error) {
 	sig := ed25519.Sign(s.key, data)
 	return types.NewSignature(sig)
 }
