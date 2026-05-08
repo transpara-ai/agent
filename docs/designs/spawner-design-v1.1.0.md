@@ -7,6 +7,13 @@
 **Author:** Claude Opus 4.6
 **Owner:** Michael Saucier
 
+> Dark Factory Phase 1 supersession note, 2026-05-08:
+> this historical design predates Agent production identity hardening.
+> Any statement that production actor registration derives Ed25519 keys from
+> deterministic public names is obsolete. Production agents must use generated
+> or externally managed signing keys; `sha256("agent:"+name)` fixtures are
+> dev/test-only.
+
 ---
 
 ### Revision History
@@ -1249,7 +1256,7 @@ All 9 known unknowns from v1.0.0 have been resolved by Prompt 0:
 | 4 | Event chain queries | CTO enrichment uses `l.pendingEvents` (flushed each iteration). Cross-iteration state needs in-memory tracking. | **Section 7 rewritten** — added `spawnerState` struct |
 | 5 | BudgetRegistry hot-add | `Register()` is thread-safe, no bootstrap-only assumptions. Works anytime. | Confirmed correct |
 | 6 | Prompt delivery | Inline via `mission()` in `StarterAgents()`. `RoleProposedContent.Prompt` → `AgentDef.SystemPrompt` → `intelligence.New()`. | Confirmed correct |
-| 7 | Actor registration | `agent.New()` derives deterministic Ed25519, calls `ActorStore().Register()`, idempotent. | Confirmed correct |
+| 7 | Actor registration | Historical finding superseded by Dark Factory Phase 1 identity hardening. `agent.New()` now defaults to generated production-safe identity; deterministic public-name-derived identity is dev/test-only. | Superseded |
 | 8 | Budget allocated event | `AgentBudgetAllocatedContent` has `AgentID` but no role name. `AgentBudgetAdjustedContent` has `AgentName`. | **Section 10 rewritten** — use `/budget` → `agent.budget.adjusted` |
 | 9 | Telemetry registration | `RegisterAgent()` thread-safe, no finalization. Must wire into dynamic spawn path. | Confirmed, added to Section 11 |
 
