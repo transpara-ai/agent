@@ -84,6 +84,26 @@ type Config struct {
 	// material. When unset, New generates a fresh Ed25519 keypair.
 	SigningKey ed25519.PrivateKey
 
+	// IdentityStore enables explicit persistent identity loading for
+	// production agents. Production persistence is opt-in; when configured,
+	// PersistentIdentityRef must be set and a missing identity fails closed
+	// unless CreatePersistentIdentity is true and IdentityAuthority approves it.
+	IdentityStore IdentityStore
+
+	// PersistentIdentityRef identifies the persisted signing identity.
+	PersistentIdentityRef string
+
+	// CreatePersistentIdentity explicitly requests first-time persistent
+	// identity creation. It is authority-gated in production.
+	CreatePersistentIdentity bool
+
+	// IdentityAuthority carries the v3.9 authority records that permit a
+	// protected persistent identity lifecycle action.
+	IdentityAuthority *IdentityAuthority
+
+	// IdentityRecordStore records v3.9 Tier 0 identity/lifecycle audit records.
+	IdentityRecordStore IdentityRecordStore
+
 	// Model is the LLM model identifier for the agent boot sequence.
 	Model string
 
@@ -115,6 +135,8 @@ type IdentityMode string
 const (
 	// IdentityModeGenerated uses generated or externally supplied key material.
 	IdentityModeGenerated IdentityMode = "generated"
+	// IdentityModeExternallyManaged requires caller-supplied key material.
+	IdentityModeExternallyManaged IdentityMode = "externally_managed"
 	// IdentityModeDeterministic derives the key from sha256("agent:"+Name).
 	// It is unsafe for production and only allowed in development/test.
 	IdentityModeDeterministic IdentityMode = "deterministic"
@@ -137,7 +159,7 @@ func New(ctx context.Context, cfg Config) (*Agent, error) {
 		return nil, fmt.Errorf("agent: Provider is required")
 	}
 
-	priv, err := signingKey(cfg)
+	priv, err := signingKey(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +341,7 @@ func (a *Agent) LastEvent() types.EventID {
 	return a.lastEvent
 }
 
-func signingKey(cfg Config) (ed25519.PrivateKey, error) {
+func signingKey(ctx context.Context, cfg Config) (ed25519.PrivateKey, error) {
 	env := cfg.Environment
 	if env == "" {
 		env = IdentityEnvironmentProduction
@@ -328,9 +350,20 @@ func signingKey(cfg Config) (ed25519.PrivateKey, error) {
 	if mode == "" {
 		mode = IdentityModeGenerated
 	}
+	if env == IdentityEnvironmentProduction && mode == IdentityModeDeterministic {
+		return nil, fmt.Errorf("agent: deterministic identity is blocked in production")
+	}
+
+	if env == IdentityEnvironmentProduction && cfg.IdentityStore != nil {
+		identity, err := resolvePersistentIdentity(ctx, cfg)
+		if err != nil {
+			return nil, err
+		}
+		return identity.PrivateKey, nil
+	}
 
 	switch mode {
-	case IdentityModeGenerated:
+	case IdentityModeGenerated, IdentityModeExternallyManaged:
 		if cfg.SigningKey != nil {
 			if len(cfg.SigningKey) != ed25519.PrivateKeySize {
 				return nil, fmt.Errorf("agent: SigningKey must be %d bytes", ed25519.PrivateKeySize)
@@ -340,15 +373,15 @@ func signingKey(cfg Config) (ed25519.PrivateKey, error) {
 			}
 			return cfg.SigningKey, nil
 		}
+		if mode == IdentityModeExternallyManaged {
+			return nil, fmt.Errorf("agent: SigningKey is required for externally managed identity")
+		}
 		_, priv, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			return nil, fmt.Errorf("agent: generate signing key: %w", err)
 		}
 		return priv, nil
 	case IdentityModeDeterministic:
-		if env == IdentityEnvironmentProduction {
-			return nil, fmt.Errorf("agent: deterministic identity is blocked in production")
-		}
 		seed := sha256.Sum256([]byte("agent:" + cfg.Name))
 		return ed25519.NewKeyFromSeed(seed[:]), nil
 	default:
