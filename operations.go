@@ -7,6 +7,7 @@ import (
 	egagent "github.com/transpara-ai/eventgraph/go/pkg/agent"
 	"github.com/transpara-ai/eventgraph/go/pkg/decision"
 	"github.com/transpara-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/intelligence"
 	"github.com/transpara-ai/eventgraph/go/pkg/types"
 )
 
@@ -46,7 +47,21 @@ func (a *Agent) Reason(ctx context.Context, prompt string) (string, error) {
 // Drives the state machine: Idle → Processing → Idle.
 // Emits agent.acted via graph.Record() (bus-visible, hash-chain safe).
 func (a *Agent) Operate(ctx context.Context, workDir, instruction string) (decision.OperateResult, error) {
-	op, ok := a.runtime.Provider().(decision.IOperator)
+	return a.operateWithProvider(ctx, a.runtime.Provider(), workDir, instruction)
+}
+
+// OperateWithProvider runs one agentic operation with an explicit provider.
+// The caller owns provider selection policy; Agent still owns lifecycle,
+// causality, and agent.acted observability for the operation.
+func (a *Agent) OperateWithProvider(ctx context.Context, provider intelligence.Provider, workDir, instruction string) (decision.OperateResult, error) {
+	if provider == nil {
+		return decision.OperateResult{}, fmt.Errorf("operate: provider is required")
+	}
+	return a.operateWithProvider(ctx, provider, workDir, instruction)
+}
+
+func (a *Agent) operateWithProvider(ctx context.Context, provider intelligence.Provider, workDir, instruction string) (decision.OperateResult, error) {
+	op, ok := provider.(decision.IOperator)
 	if !ok {
 		return decision.OperateResult{}, fmt.Errorf("operate: provider does not support Operate")
 	}
