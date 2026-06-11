@@ -60,6 +60,32 @@ func (a *Agent) OperateWithProvider(ctx context.Context, provider intelligence.P
 	return a.operateWithProvider(ctx, provider, workDir, instruction)
 }
 
+// operateContainmentPreamble pins the workspace boundary into every Operate
+// instruction — the instruction-pinning half of slice-1 Finding 18 (v10-F2);
+// the detection half is the hive loop's containment tripwire. The Operate
+// subprocess sees ONLY its instruction (the planner contract and the loop
+// gates are invisible to it), so the boundary must be stated where the
+// implementer actually reads: the v10 round-3 implementer walked out of its
+// workspace while following gate text that demanded exactly that. An empty
+// workDir gets no preamble — a pin naming a wrong or empty boundary is worse
+// than none, and empty-workDir callers (provider-resolved cwd) keep their
+// existing semantics.
+func operateContainmentPreamble(workDir string) string {
+	if workDir == "" {
+		return ""
+	}
+	return "== WORKSPACE CONTAINMENT (FAIL-CLOSED) ==\n" +
+		"Your assigned workspace is " + workDir + " — every file you read or\n" +
+		"write and every command you run stays inside it. Sibling checkouts and\n" +
+		"any path outside the workspace are OUT OF BOUNDS: a runtime tripwire\n" +
+		"fails the run on any git-visible change to a watched sibling checkout,\n" +
+		"and remote credentials are stripped, so pushes and PR creation fail.\n" +
+		"If the task text seems to demand an outside path, a push, or a PR,\n" +
+		"do NOT attempt it — the governed factory path owns delivery; finish\n" +
+		"the local work inside the workspace and\n" +
+		"state the conflict plainly in your summary.\n\n"
+}
+
 func (a *Agent) operateWithProvider(ctx context.Context, provider intelligence.Provider, workDir, instruction string) (decision.OperateResult, error) {
 	op, ok := provider.(decision.IOperator)
 	if !ok {
@@ -72,7 +98,7 @@ func (a *Agent) operateWithProvider(ctx context.Context, provider intelligence.P
 
 	result, err := op.Operate(ctx, decision.OperateTask{
 		WorkDir:     workDir,
-		Instruction: instruction,
+		Instruction: operateContainmentPreamble(workDir) + instruction,
 	})
 	if err != nil {
 		_ = a.transitionTo(egagent.StateIdle)
