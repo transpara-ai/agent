@@ -146,12 +146,12 @@ func (p *capturingOperateProvider) Operate(ctx context.Context, task decision.Op
 }
 
 // TestOperatePinsWorkspaceContainmentPreamble guards the instruction-pinning
-// half of slice-1 Finding 18 (v10-F2): the runtime tripwire (hive pkg/loop)
-// detects sibling-checkout mutations, but the Operate subprocess itself must
-// be TOLD its boundary — the v10 round-3 implementer walked out of its
-// workspace while following gate text that demanded it. Every Operate
-// instruction is pinned with the workspace path and the fail-closed rule
-// that out-of-bounds work and remote delivery are never attempted.
+// half of slice-1 Finding 18 (v10-F2): prompt-layer guidance stating the
+// boundary at the one surface the Operate subprocess actually reads — the
+// v10 round-3 implementer walked out of its workspace while following gate
+// text that demanded it. Enforcement is NOT this package's claim: the hive
+// tripwire (hive#152) and provider credential stripping (eventgraph#50)
+// apply only when those layers are in the stack.
 func TestOperatePinsWorkspaceContainmentPreamble(t *testing.T) {
 	a := newTestAgent(t, "operate_pinning")
 	provider := &capturingOperateProvider{}
@@ -165,12 +165,13 @@ func TestOperatePinsWorkspaceContainmentPreamble(t *testing.T) {
 	if got.WorkDir != ws {
 		t.Fatalf("WorkDir = %q, want %q", got.WorkDir, ws)
 	}
-	if !strings.HasPrefix(got.Instruction, "== WORKSPACE CONTAINMENT (FAIL-CLOSED) ==") {
+	if !strings.HasPrefix(got.Instruction, "== WORKSPACE CONTAINMENT POLICY ==") {
 		t.Errorf("instruction does not begin with the containment preamble:\n%s", got.Instruction)
 	}
 	for _, phrase := range []string{
 		"Your assigned workspace is " + ws,
 		"OUT OF BOUNDS",
+		"Do not rely on\nruntime checks or credential failures as permission to try outside work.",
 		"do NOT attempt it",
 		"state the conflict plainly in your summary",
 	} {
