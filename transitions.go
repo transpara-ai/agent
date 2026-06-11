@@ -59,6 +59,29 @@ func (a *Agent) ResetToIdle() {
 	a.state = egagent.StateIdle
 }
 
+// ResetIfStuckProcessing forces the agent back to Idle ONLY when it is
+// currently in Processing — the stranded shape left behind when a failed
+// operation's cleanup transition (Processing → Idle) cannot record its
+// state event and rolls back (OBSERVABLE invariant in transitionLocked).
+// Returns whether a reset happened. Does NOT emit a state change event —
+// recovery path, mirroring ResetToIdle.
+//
+// This is the allowlisted recovery (hive v13-F1 fix set, codex r1+r2):
+// authority states are untouchable — an unconditional reset silently
+// revived Guardian-suspended agents, while no reset turned a store hiccup
+// during error cleanup into a terminal loop death. Check and reset are
+// atomic under a.mu, so no caller can observe Processing and then reset an
+// agent that was suspended in between.
+func (a *Agent) ResetIfStuckProcessing() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.state != egagent.StateProcessing {
+		return false
+	}
+	a.state = egagent.StateIdle
+	return true
+}
+
 // Suspend puts the agent into suspended state (e.g., Guardian HALT).
 // Can only transition from Idle or Processing.
 func (a *Agent) Suspend() error {
