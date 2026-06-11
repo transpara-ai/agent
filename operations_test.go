@@ -132,3 +132,70 @@ func TestOperateWithProviderRejectsTerminalStatesWithoutCallingProvider(t *testi
 		})
 	}
 }
+
+// capturingOperateProvider records the exact OperateTask handed to the
+// provider so tests can assert on the final composed instruction.
+type capturingOperateProvider struct {
+	mockOperateProvider
+	lastTask decision.OperateTask
+}
+
+func (p *capturingOperateProvider) Operate(ctx context.Context, task decision.OperateTask) (decision.OperateResult, error) {
+	p.lastTask = task
+	return p.mockOperateProvider.Operate(ctx, task)
+}
+
+// TestOperatePinsWorkspaceContainmentPreamble guards the instruction-pinning
+// half of slice-1 Finding 18 (v10-F2): prompt-layer guidance stating the
+// boundary at the one surface the Operate subprocess actually reads — the
+// v10 round-3 implementer walked out of its workspace while following gate
+// text that demanded it. Enforcement is NOT this package's claim: the hive
+// tripwire (hive#152) and provider credential stripping (eventgraph#50)
+// apply only when those layers are in the stack.
+func TestOperatePinsWorkspaceContainmentPreamble(t *testing.T) {
+	a := newTestAgent(t, "operate_pinning")
+	provider := &capturingOperateProvider{}
+	ws := t.TempDir()
+
+	if _, err := a.OperateWithProvider(context.Background(), provider, ws, "write the catalog file"); err != nil {
+		t.Fatalf("OperateWithProvider: %v", err)
+	}
+
+	got := provider.lastTask
+	if got.WorkDir != ws {
+		t.Fatalf("WorkDir = %q, want %q", got.WorkDir, ws)
+	}
+	if !strings.HasPrefix(got.Instruction, "== WORKSPACE CONTAINMENT POLICY ==") {
+		t.Errorf("instruction does not begin with the containment preamble:\n%s", got.Instruction)
+	}
+	for _, phrase := range []string{
+		"Your assigned workspace is " + ws,
+		"OUT OF BOUNDS",
+		"Do not rely on\nruntime checks or credential failures as permission to try outside work.",
+		"do NOT attempt it",
+		"state the conflict plainly in your summary",
+	} {
+		if !strings.Contains(got.Instruction, phrase) {
+			t.Errorf("instruction missing containment clause %q", phrase)
+		}
+	}
+	if !strings.HasSuffix(got.Instruction, "write the catalog file") {
+		t.Errorf("original instruction must follow the preamble verbatim; got tail %q",
+			got.Instruction[max(0, len(got.Instruction)-60):])
+	}
+}
+
+// An empty workDir gets NO preamble: a pin naming a wrong/empty boundary is
+// worse than none, and empty-workDir semantics (provider-resolved cwd) are
+// preserved unchanged for callers outside the hive Operate path.
+func TestOperateEmptyWorkDirGetsNoFalsePin(t *testing.T) {
+	a := newTestAgent(t, "operate_no_false_pin")
+	provider := &capturingOperateProvider{}
+
+	if _, err := a.OperateWithProvider(context.Background(), provider, "", "inspect runtime state"); err != nil {
+		t.Fatalf("OperateWithProvider: %v", err)
+	}
+	if got := provider.lastTask.Instruction; got != "inspect runtime state" {
+		t.Errorf("empty-workDir instruction was modified: %q", got)
+	}
+}
