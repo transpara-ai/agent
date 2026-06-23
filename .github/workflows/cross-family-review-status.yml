@@ -1,0 +1,39 @@
+name: Cross-Family Review Status
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  statuses: write
+
+concurrency:
+  group: cross-family-review-status-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  seed-status:
+    name: Seed external review status
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post pending cross-family review status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          EVENT_ACTION: ${{ github.event.action }}
+        run: |
+          # This workflow runs from the base branch copy and deliberately does
+          # not check out or execute PR code. It only seeds the external status.
+          description="Waiting for exact-head cross-family adversarial review"
+          if [ "${EVENT_ACTION}" = "ready_for_review" ]; then
+            description="Ready-state exact-head cross-family review required"
+          fi
+
+          gh api --method POST "repos/${GH_REPO}/statuses/${HEAD_SHA}" \
+            -f state=pending \
+            -f context=cross-family-adversarial-review \
+            -f target_url="${PR_URL}" \
+            -f description="${description}"
