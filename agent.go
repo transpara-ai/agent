@@ -285,6 +285,33 @@ func (a *Agent) recordAndTrack(eventTypeName string, content event.EventContent)
 	return ev, nil
 }
 
+// recordAndTrackCausedBy records an event with exactly one caller-supplied
+// causal anchor and updates lastEvent only after a successful signed record.
+// It exists for cross-actor governance transitions whose direct cause cannot
+// be represented by this agent's private last-event chain.
+func (a *Agent) recordAndTrackCausedBy(eventTypeName string, content event.EventContent, cause types.EventID) (event.Event, error) {
+	if cause.IsZero() {
+		return event.Event{}, fmt.Errorf("explicit cause is zero")
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	ev, err := a.graph.Record(
+		types.MustEventType(eventTypeName),
+		a.runtime.ID(),
+		content,
+		[]types.EventID{cause},
+		a.convID,
+		a.signer,
+	)
+	if err != nil {
+		return ev, err
+	}
+	a.lastEvent = ev.ID()
+	return ev, nil
+}
+
 // checkCanEmit returns an error if the agent is in a terminal or suspended
 // state. Methods that emit events without driving the FSM (Learn, Act,
 // Communicate, Introspect, etc.) must call this first — otherwise a retired
