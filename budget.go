@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/transpara-ai/eventgraph/go/pkg/event"
+	"github.com/transpara-ai/eventgraph/go/pkg/types"
 )
 
 // EmitBudgetAllocated records a budget allocation event on the graph.
@@ -30,6 +31,20 @@ func (a *Agent) EmitBudgetAdjusted(content event.AgentBudgetAdjustedContent) err
 		return fmt.Errorf("budget adjusted: %w", err)
 	}
 	_, err := a.recordAndTrack(event.EventTypeAgentBudgetAdjusted.Value(), content)
+	if err != nil {
+		return fmt.Errorf("budget adjusted: %w", err)
+	}
+	return nil
+}
+
+// EmitBudgetAdjustedCausedBy records a budget adjustment with exactly one
+// explicit cross-actor cause. Ordinary budget adjustments retain their
+// existing private last-event causality through EmitBudgetAdjusted.
+func (a *Agent) EmitBudgetAdjustedCausedBy(content event.AgentBudgetAdjustedContent, cause types.EventID) error {
+	if err := a.checkCanEmit(); err != nil {
+		return fmt.Errorf("budget adjusted: %w", err)
+	}
+	_, err := a.recordAndTrackCausedBy(event.EventTypeAgentBudgetAdjusted.Value(), content, cause)
 	if err != nil {
 		return fmt.Errorf("budget adjusted: %w", err)
 	}
