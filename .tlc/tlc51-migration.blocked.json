@@ -1,0 +1,16 @@
+{
+  "schema_version": "tlc51-consumer-migration-blocked/v1",
+  "status": "BLOCKED",
+  "repository": "transpara-ai/agent",
+  "design_git_blob": "14cc032d3252855d264d28b7fbd7cb57048fc82b",
+  "current_adoption": {"path": ".tlc/adoption.json", "git_blob": "cf43a4b824b1311ac2a8c26a226bb468b69a3bd6", "version": "5.0.0", "requested_mode": "report_only", "adapter": "none"},
+  "retained_predecessor_workflow": {"path": ".github/workflows/tlc-4.5.yml", "git_blob": "2c9ba13f29b5c4e722cd0db36f7e87eb06614938", "mode": "audit"},
+  "observed_required_check_names": ["Build & Test", "cross-family-adversarial-review"],
+  "predecessor_app_identities": "PENDING_FRESH_AUTHENTICATED_READ_BACK",
+  "reserved_paths": {"adoption": ".tlc/adoption.json", "wrapper": ".github/workflows/tlc-5.1.yml", "settings_subject": ".tlc/tlc51-settings.json", "rollback_subject": ".tlc/tlc51-settings-rollback.json"},
+  "required_before_wrapper_or_adoption": ["accepted annotated TLC v5.1.0 tag, binding commit, manifest and package digests", "protected exact controller head and package digest with authenticated bootstrap read-back", "resolved positive numeric TLC Check App ID", "repository-owned exact review and Human adoption decision"],
+  "required_before_settings_subject": ["fresh authenticated complete governed-field read-back", "every predecessor check tuple preserved exactly with provider-returned numeric or null app_id", "new TLC 5.1 / gate tuple with resolved positive numeric app_id", "separately reviewed predecessor-first rollback document"],
+  "preservation": {"active_tlc45_workflow_unchanged": true, "active_tlc50_adoption_unchanged": true, "unknown_app_id_is_not_null": true, "new_tlc_check_not_required": true},
+  "authority_granted": [],
+  "protected_effects_invoked": []
+}
