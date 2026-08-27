@@ -1,16 +1,16 @@
 {
-  "schema_version": "tlc51-consumer-migration-blocked/v1",
+  "schema_version": "tlc51-consumer-migration-blocked/v2",
   "status": "BLOCKED",
   "repository": "transpara-ai/agent",
   "design_git_blob": "14cc032d3252855d264d28b7fbd7cb57048fc82b",
   "current_adoption": {"path": ".tlc/adoption.json", "git_blob": "cf43a4b824b1311ac2a8c26a226bb468b69a3bd6", "version": "5.0.0", "requested_mode": "report_only", "adapter": "none"},
   "retained_predecessor_workflow": {"path": ".github/workflows/tlc-4.5.yml", "git_blob": "2c9ba13f29b5c4e722cd0db36f7e87eb06614938", "mode": "audit"},
-  "observed_required_check_names": ["Build & Test", "cross-family-adversarial-review"],
-  "predecessor_app_identities": "PENDING_FRESH_AUTHENTICATED_READ_BACK",
+  "required_check_observation": {"authenticated": true, "actor": "github:MichaelSaucier", "provider_origin": "https://api.github.com/repos/transpara-ai/agent/branches/main/protection/required_status_checks", "observed_at": "2026-08-27T19:46:55Z", "provider_etag": "W/\"c942902127f4e1b6d877ac77016d22003683221a1b2c9e468ed36e9f55fe886b\"", "provider_request_id": "B6DC:29732F:37A9402:359B074:6A90942F", "scope": "required_status_checks_only", "strict": true, "complete_governed_field_readback": false, "checks": [{"context": "Build & Test", "app_id": 15368}, {"context": "cross-family-adversarial-review", "app_id": null}]},
+  "new_tlc_check": {"context": "TLC 5.1 / gate", "identity_status": "PENDING_POSITIVE_NUMERIC_APP_ID", "required": false},
   "reserved_paths": {"adoption": ".tlc/adoption.json", "wrapper": ".github/workflows/tlc-5.1.yml", "settings_subject": ".tlc/tlc51-settings.json", "rollback_subject": ".tlc/tlc51-settings-rollback.json"},
   "required_before_wrapper_or_adoption": ["accepted annotated TLC v5.1.0 tag, binding commit, manifest and package digests", "protected exact controller head and package digest with authenticated bootstrap read-back", "resolved positive numeric TLC Check App ID", "repository-owned exact review and Human adoption decision"],
   "required_before_settings_subject": ["fresh authenticated complete governed-field read-back", "every predecessor check tuple preserved exactly with provider-returned numeric or null app_id", "new TLC 5.1 / gate tuple with resolved positive numeric app_id", "separately reviewed predecessor-first rollback document"],
-  "preservation": {"active_tlc45_workflow_unchanged": true, "active_tlc50_adoption_unchanged": true, "unknown_app_id_is_not_null": true, "new_tlc_check_not_required": true},
+  "preservation": {"active_tlc45_workflow_unchanged": true, "active_tlc50_adoption_unchanged": true, "provider_returned_check_tuples_recorded_exactly": true, "unknown_app_id_is_not_null": true, "new_tlc_check_not_required": true, "observation_is_not_settings_authority": true},
   "authority_granted": [],
   "protected_effects_invoked": []
 }
