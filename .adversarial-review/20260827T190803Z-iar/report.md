@@ -55,4 +55,3 @@ These are implementation-verification obligations and fail-closed future stops. 
 - any other protected effect
 
 IAR is same-family evidence. It does not satisfy CFAR, create PR readiness, or authorize any protected effect.
-
