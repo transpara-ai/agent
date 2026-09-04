@@ -10,6 +10,7 @@ Universal Go Agent abstraction for the hive. Preserve identity, lifecycle, trust
 - Verify: `make verify`
 
 ## Rules
+- Use the installed canonical `transpara-tlc` skill for software changes; do not copy its policy or implementation into this repository.
 - Every externally meaningful state change must remain observable as a signed event.
 - Preserve immutable ID semantics; names are for humans, IDs are for systems.
 - Do not bypass lifecycle guards for retired or suspended agents.
